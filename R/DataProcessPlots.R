@@ -74,16 +74,18 @@ dataProcessPlots <- function(data=data,
 				datarun$PROTEIN <- factor(datarun$Protein)
 		}
     
-    	## assign upper or lower limit
-    	y.limup <- 30
-    	if (is.numeric(ylimUp)) {
-    		y.limup <- ylimUp 
-    	}
+    ## assign upper or lower limit
+    # MC, 2016/04/21, default upper limit is maximum log2(intensity) after normalization+3, then round-up
+    y.limup <- ceiling ( max ( datafeature$ABUNDANCE, na.rm=TRUE ) + 3 )
     
-    	y.limdown=-1
-    	if (is.numeric(ylimDown)) {
-    		y.limdown <- ylimDown 
-    	}
+    if (is.numeric(ylimUp)) {
+    	y.limup <- ylimUp 
+    }
+    
+    y.limdown=-1
+    if (is.numeric(ylimDown)) {
+    	y.limdown <- ylimDown 
+    }
     
 		datafeature <- datafeature[with(datafeature, order(GROUP_ORIGINAL, SUBJECT_ORIGINAL, LABEL)), ]
 		datafeature$RUN <- factor(datafeature$RUN, levels=unique(datafeature$RUN), labels=seq(1, length(unique(datafeature$RUN))))
@@ -202,7 +204,7 @@ dataProcessPlots <- function(data=data,
         					scale_colour_manual(values=s)+
         					scale_linetype_manual(values=ss)+
         					scale_x_continuous('MS runs', breaks=cumGroupAxis)+
-        					scale_y_continuous(yaxis.name, limit=c(y.limdown, y.limup))+
+        					scale_y_continuous(yaxis.name, limits=c(y.limdown, y.limup))+
         					geom_vline(xintercept=lineNameAxis + 0.5, colour="grey", linetype="longdash")+
         					labs(title=unique(sub$PROTEIN))+
         					geom_text(data=groupNametemp, aes(x=RUN, y=ABUNDANCE, label=Name), size=text.size, angle=text.angle, color="black")+
@@ -249,7 +251,7 @@ dataProcessPlots <- function(data=data,
         					scale_colour_manual(values=unique(s))+
         					scale_linetype_manual(values=ss, guide="none")+
         					scale_x_continuous('MS runs', breaks=cumGroupAxis)+
-        					scale_y_continuous(yaxis.name, limit=c(y.limdown, y.limup))+
+        					scale_y_continuous(yaxis.name, limits=c(y.limdown, y.limup))+
         					geom_vline(xintercept=lineNameAxis+0.5, colour="grey", linetype="longdash")+
         					labs(title=unique(sub$PROTEIN))+
         					geom_text(data=groupNametemp, aes(x=RUN, y=ABUNDANCE, label=Name), size=text.size, angle=text.angle, color="black")+
@@ -295,7 +297,7 @@ dataProcessPlots <- function(data=data,
         					scale_colour_manual(values=unique(s), guide="none")+
         					scale_linetype_manual(values=ss, guide="none")+
         					scale_x_continuous('MS runs', breaks=cumGroupAxis)+
-        					scale_y_continuous(yaxis.name, limit=c(y.limdown, y.limup))+
+        					scale_y_continuous(yaxis.name, limits=c(y.limdown, y.limup))+
         					geom_vline(xintercept=lineNameAxis+0.5, colour="grey", linetype="longdash")+
         					labs(title=unique(sub$PROTEIN))+
         					geom_text(data=groupNametemp, aes(x=RUN, y=ABUNDANCE, label=Name), size=text.size, angle=text.angle, color="black")+
@@ -389,34 +391,35 @@ dataProcessPlots <- function(data=data,
      			}
      			
      			## for annotation of condition
-      			groupNametemp <- data.frame(groupName, FEATURE=unique(sub$FEATURE)[1], analysis="Run summary")
+      		groupNametemp <- data.frame(groupName, FEATURE=unique(sub$FEATURE)[1], analysis="Run summary")
       
-      			if (haverun) {
-        			subrun <- datarun[datarun$Protein == levels(datafeature$PROTEIN)[i], ]
+      		if (haverun) {
+        		subrun <- datarun[datarun$Protein == levels(datafeature$PROTEIN)[i], ]
 			
-					if (nrow(subrun)!=0) {
-						quantrun <- data.frame(PROTEIN=subrun$Protein, PEPTIDE="Run summary", TRANSITION="Run summary", FEATURE="Run summary", LABEL="Endogenous", GROUP_ORIGINAL=NA, SUBJECT_ORIGINAL=NA, RUN=subrun$RUN, GROUP=NA, SUBJECT=NA, SUBJECT_NESTED=NA,  INTENSITY=NA, ABUNDANCE=subrun$ABUNDANCE, METHOD=1)
-					} else { # if there is only one Run measured across all runs, no Run information for linear with censored
-						quantrun <- data.frame(PROTEIN=levels(datafeature$PROTEIN)[i], PEPTIDE="Run summary", TRANSITION="Run summary", FEATURE="Run summary", LABEL="Endogenous", GROUP_ORIGINAL=NA, SUBJECT_ORIGINAL=NA, RUN=unique(datafeature$RUN)[1], GROUP=NA, SUBJECT=NA, SUBJECT_NESTED=NA, INTENSITY=NA, ABUNDANCE=NA, METHOD=1)
-					}
+					  if (nrow(subrun)!=0) {
+						  quantrun <- data.frame(PROTEIN=subrun$Protein, PEPTIDE="Run summary", TRANSITION="Run summary", FEATURE="Run summary", LABEL="Endogenous", GROUP_ORIGINAL=NA, SUBJECT_ORIGINAL=NA, RUN=subrun$RUN, GROUP=NA, SUBJECT=NA, SUBJECT_NESTED=NA,  INTENSITY=NA, ABUNDANCE=subrun$ABUNDANCE, METHOD=1)
+					    
+            } else { # if there is only one Run measured across all runs, no Run information for linear with censored
+						  quantrun <- data.frame(PROTEIN=levels(datafeature$PROTEIN)[i], PEPTIDE="Run summary", TRANSITION="Run summary", FEATURE="Run summary", LABEL="Endogenous", GROUP_ORIGINAL=NA, SUBJECT_ORIGINAL=NA, RUN=unique(datafeature$RUN)[1], GROUP=NA, SUBJECT=NA, SUBJECT_NESTED=NA, INTENSITY=NA, ABUNDANCE=NA, METHOD=1)
+					  }
 			
-					if (any(is.element(colnames(sub), "imputed"))) {
-						quantrun$imputed <- FALSE
-					}
+					  if (any(is.element(colnames(sub), "imputed"))) {
+						  quantrun$imputed <- FALSE
+					 }
 
-					quantrun$analysis <- "Run summary"
-					sub$analysis <- "Processed feature-level data"
+					  quantrun$analysis <- "Run summary"
+					  sub$analysis <- "Processed feature-level data"
 					
-					## if 'Filter' column after feature selection, remove this column in order to match columns with run quantification
-					filter_column<-is.element(colnames(sub), "Filter")
-					if (any(filter_column)) {
-						sub<-sub[, !filter_column]
-					}
+					  ## if 'Filter' column after feature selection, remove this column in order to match columns with run quantification
+					  filter_column<-is.element(colnames(sub), "Filter")
+					  if (any(filter_column)) {
+						  sub<-sub[, !filter_column]
+					  }
 					
-					final <- rbind(sub, quantrun)
-					final$analysis <- factor(final$analysis)
-					final$FEATURE <- factor(final$FEATURE)
-					final$RUN <- as.numeric(final$RUN)
+					  final <- rbind(sub, quantrun)
+					  final$analysis <- factor(final$analysis)
+					  final$FEATURE <- factor(final$FEATURE)
+					  final$RUN <- as.numeric(final$RUN)
 
 					ptempall <- ggplot(aes_string(x='RUN', y='ABUNDANCE', color='analysis', linetype='FEATURE', size='analysis', shape='analysis'), data=final)+
 								facet_grid(~LABEL)+
@@ -427,7 +430,7 @@ dataProcessPlots <- function(data=data,
 								scale_size_manual(values=c(1, 2))+
 								scale_linetype_manual(values=c(rep(1, times=length(unique(final$FEATURE))-1), 2), guide="none")+
 								scale_x_continuous('MS runs',breaks=cumGroupAxis)+
-								scale_y_continuous(yaxis.name, limit=c(y.limdown, y.limup))+
+								scale_y_continuous(yaxis.name, limits=c(y.limdown, y.limup))+
 								geom_vline(xintercept=lineNameAxis+0.5, colour="grey", linetype="longdash")+
 								labs(title=unique(final$PROTEIN))+
 								geom_text(data=groupNametemp, aes(x=RUN, y=ABUNDANCE, label=Name), size=text.size, angle=text.angle, color="black")+
@@ -498,7 +501,9 @@ dataProcessPlots <- function(data=data,
     	}
 
     	## assign upper or lower limit
-    	y.limup <- 30
+	  	# MC, 2016/04/21, default upper limit is maximum log2(intensity) after normalization+3, then round-up
+	  	y.limup <- ceiling ( max ( datafeature$ABUNDANCE, na.rm=TRUE ) + 3 )
+    
     	if (is.numeric(ylimUp)) {
     		y.limup <- ylimUp 
     	}
@@ -541,7 +546,7 @@ dataProcessPlots <- function(data=data,
     			geom_boxplot(aes_string(fill='LABEL'), outlier.shape=1, outlier.size=1.5)+
     			scale_fill_manual(values=label.color, guide="none")+
     			scale_x_discrete('MS runs', breaks=cumGroupAxis)+
-    			scale_y_continuous(yaxis.name, limit=c(y.limdown, y.limup))+
+    			scale_y_continuous(yaxis.name, limits=c(y.limdown, y.limup))+
     			geom_vline(xintercept=lineNameAxis+0.5, colour="grey", linetype="longdash")+
     			labs(title="All proteins")+
     			geom_text(data=groupName, aes(x=RUN, y=ABUNDANCE, label=Name), size=text.size, angle=text.angle, color="black")+
@@ -610,7 +615,7 @@ dataProcessPlots <- function(data=data,
       				geom_boxplot(aes_string(fill='LABEL'), outlier.shape=1, outlier.size=1.5)+
       				scale_fill_manual(values=label.color, guide="none")+
       				scale_x_discrete('MS runs', breaks=cumGroupAxis)+
-      				scale_y_continuous(yaxis.name, limit=c(y.limdown, y.limup))+
+      				scale_y_continuous(yaxis.name, limits=c(y.limdown, y.limup))+
       				geom_vline(xintercept=lineNameAxis+0.5, colour="grey", linetype="longdash")+
       				labs(title=unique(sub$PROTEIN))+
       				geom_text(data=groupName, aes(x=RUN, y=ABUNDANCE, label=Name), size=text.size, angle=text.angle, color="black")+
@@ -775,7 +780,7 @@ dataProcessPlots <- function(data=data,
           				geom_errorbar(aes(ymax = Mean + ciw, ymin= Mean - ciw), data=tempsummary, width=0.1, colour="red")+
           				geom_point(size = dot.size.condition, colour = "darkred")+
           				scale_x_discrete('Condition')+
-          				scale_y_continuous(yaxis.name, limit=c(y.limdown, y.limup))+
+          				scale_y_continuous(yaxis.name, limits=c(y.limdown, y.limup))+
           				geom_hline(yintercept = 0, linetype = "twodash", colour = "darkgrey", size = 0.6)+
           				labs(title=unique(sub$PROTEIN))+
           				theme(
@@ -803,7 +808,7 @@ dataProcessPlots <- function(data=data,
           				geom_errorbar(aes(ymax = Mean + ciw, ymin = Mean - ciw), data=tempsummary, width=0.1, colour="red")+
           				geom_point(size=dot.size.condition, colour="darkred")+
           				scale_x_continuous('Condition', breaks=tempsummary$Label, labels=tempsummary$Label)+
-          				scale_y_continuous(yaxis.name, limit=c(y.limdown, y.limup))+
+          				scale_y_continuous(yaxis.name, limits=c(y.limdown, y.limup))+
           				geom_hline(yintercept=0, linetype="twodash", colour="darkgrey", size=0.6)+
           				labs(title=unique(sub$PROTEIN))+
           				theme(
